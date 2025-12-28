@@ -137,7 +137,7 @@ export class CustomTaskSerializer extends DefaultTaskSerializer {
         };
     }
 
-    public componentToString(task: Task, shortMode: boolean, component: TaskLayoutComponent) {
+    public componentToString(task: Task, _shortMode: boolean, component: TaskLayoutComponent) {
         const settings = this.getCustomSettings();
         const dateFormat = settings.dateFormat;
 
