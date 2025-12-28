@@ -196,6 +196,7 @@ export class CustomTaskSerializer extends DefaultTaskSerializer {
                 return ' ' + settings.dependsOnPattern.replace('%value%', task.dependsOn.join(','));
             }
             case TaskLayoutComponent.Id:
+                if (!task.id) return '';
                 return ' ' + settings.idPattern.replace('%value%', task.id);
             case TaskLayoutComponent.BlockLink:
                 return task.blockLink ?? '';
