@@ -72,9 +72,6 @@ export const TASK_FORMATS = {
         ) => {
             // Re-create the suggestion builder on each call to ensure it uses the latest settings/symbols
             const serializer = new CustomTaskSerializer();
-            // TODO: Figure out if we need brackets restriction like dataview
-            // For now, assuming standard behavior (no bracket restriction unless user configures patterns with brackets, which they do by default)
-            // But makeDefaultSuggestionBuilder doesn't inherently check brackets, it's just about what triggers it.
             return makeDefaultSuggestionBuilder(serializer.symbols, DEFAULT_MAX_GENERIC_SUGGESTIONS, false)(
                 line,
                 cursorPos,

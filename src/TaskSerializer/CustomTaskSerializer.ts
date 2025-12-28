@@ -58,9 +58,11 @@ export class CustomTaskSerializer extends DefaultTaskSerializer {
         return getSettings().customFormatSettings;
     }
 
+    protected get dateFormat(): string {
+        return this.getCustomSettings().dateFormat;
+    }
+
     private convertDateFormatToRegex(format: string): string {
-        // This is a basic conversion, it might need to be more robust for all moment.js formats
-        // Escaping dot for regex
         let regex = format.replace(/\./g, '\\.');
         regex = regex.replace(/YYYY/g, '\\d{4}');
         regex = regex.replace(/YY/g, '\\d{2}');
@@ -76,8 +78,6 @@ export class CustomTaskSerializer extends DefaultTaskSerializer {
     private createPatternRegex(pattern: string, valueRegex: string): RegExp {
         const parts = pattern.split('%value%');
         const escapedParts = parts.map((part) => this.escapeRegExp(part));
-        // Construct regex: part1 + value + part2, allowing flexibility for spaces if needed, but strict based on user input
-        // Using strict user input for now as requested.
         return new RegExp(escapedParts.join(valueRegex) + '$');
     }
 
@@ -95,7 +95,7 @@ export class CustomTaskSerializer extends DefaultTaskSerializer {
                 Lowest: settings.priorityLowest,
                 None: settings.priorityNone,
             },
-            startDateSymbol: settings.startDatePattern.replace('%value%', ''), // Approximate for visual consistency in some contexts
+            startDateSymbol: settings.startDatePattern.replace('%value%', ''),
             createdDateSymbol: settings.createdDatePattern.replace('%value%', ''),
             scheduledDateSymbol: settings.scheduledDatePattern.replace('%value%', ''),
             dueDateSymbol: settings.dueDatePattern.replace('%value%', ''),
@@ -162,28 +162,28 @@ export class CustomTaskSerializer extends DefaultTaskSerializer {
             }
             case TaskLayoutComponent.StartDate:
                 return task.startDate
-                    ? ' ' + settings.startDatePattern.replace('%date%', task.startDate.format(dateFormat))
+                    ? ' ' + settings.startDatePattern.replace('%value%', task.startDate.format(dateFormat))
                     : '';
             case TaskLayoutComponent.CreatedDate:
                 return task.createdDate
-                    ? ' ' + settings.createdDatePattern.replace('%date%', task.createdDate.format(dateFormat))
+                    ? ' ' + settings.createdDatePattern.replace('%value%', task.createdDate.format(dateFormat))
                     : '';
             case TaskLayoutComponent.ScheduledDate:
                 if (task.scheduledDateIsInferred) return '';
                 return task.scheduledDate
-                    ? ' ' + settings.scheduledDatePattern.replace('%date%', task.scheduledDate.format(dateFormat))
+                    ? ' ' + settings.scheduledDatePattern.replace('%value%', task.scheduledDate.format(dateFormat))
                     : '';
             case TaskLayoutComponent.DoneDate:
                 return task.doneDate
-                    ? ' ' + settings.doneDatePattern.replace('%date%', task.doneDate.format(dateFormat))
+                    ? ' ' + settings.doneDatePattern.replace('%value%', task.doneDate.format(dateFormat))
                     : '';
             case TaskLayoutComponent.CancelledDate:
                 return task.cancelledDate
-                    ? ' ' + settings.cancelledDatePattern.replace('%date%', task.cancelledDate.format(dateFormat))
+                    ? ' ' + settings.cancelledDatePattern.replace('%value%', task.cancelledDate.format(dateFormat))
                     : '';
             case TaskLayoutComponent.DueDate:
                 return task.dueDate
-                    ? ' ' + settings.dueDatePattern.replace('%date%', task.dueDate.format(dateFormat))
+                    ? ' ' + settings.dueDatePattern.replace('%value%', task.dueDate.format(dateFormat))
                     : '';
             case TaskLayoutComponent.RecurrenceRule:
                 if (!task.recurrence) return '';
@@ -201,158 +201,7 @@ export class CustomTaskSerializer extends DefaultTaskSerializer {
             case TaskLayoutComponent.BlockLink:
                 return task.blockLink ?? '';
             default:
-                // Fallback to default behavior if component not handled or throw
-                // But since we inherit from DefaultTaskSerializer and we override componentToString, we should cover all.
-                // Re-using DefaultTaskSerializer.componentToString is tricky because it relies on fixed symbols.
                 return '';
         }
-    }
-
-    public deserialize(line: string): TaskDetails {
-        // Need to override deserialize because parent uses `this.symbols` which we override via getter.
-        // However, parent's deserialize method calls `parsePriority` which uses `this.symbols.prioritySymbols`.
-        // And it calls `window.moment(..., TaskRegularExpressions.dateFormat)`.
-        // WE NEED TO OVERRIDE THE DATE FORMAT used in parsing.
-        // The parent `deserialize` hardcodes `TaskRegularExpressions.dateFormat` (YYYY-MM-DD).
-        // So we MUST essentially copy-paste `deserialize` and change the date parsing logic.
-
-        const { TaskFormatRegularExpressions } = this.symbols;
-        const settings = this.getCustomSettings();
-        const dateFormat = settings.dateFormat;
-
-        let matched: boolean;
-        let priority: Priority = Priority.None;
-        let startDate: Moment | null = null;
-        let scheduledDate: Moment | null = null;
-        let dueDate: Moment | null = null;
-        let doneDate: Moment | null = null;
-        let cancelledDate: Moment | null = null;
-        let createdDate: Moment | null = null;
-        let recurrenceRule: string = '';
-        let recurrence: Recurrence | null = null;
-        let onCompletion: OnCompletion = OnCompletion.Ignore;
-        let id: string = '';
-        let dependsOn: string[] | [] = [];
-        let trailingTags = '';
-        const maxRuns = 20;
-        let runs = 0;
-
-        do {
-            matched = false;
-            const priorityMatch = line.match(TaskFormatRegularExpressions.priorityRegex);
-            if (priorityMatch !== null) {
-                priority = this.parsePriority(priorityMatch[1]);
-                line = line.replace(TaskFormatRegularExpressions.priorityRegex, '').trim();
-                matched = true;
-            }
-
-            const doneDateMatch = line.match(TaskFormatRegularExpressions.doneDateRegex);
-            if (doneDateMatch !== null) {
-                doneDate = window.moment(doneDateMatch[1], dateFormat);
-                line = line.replace(TaskFormatRegularExpressions.doneDateRegex, '').trim();
-                matched = true;
-            }
-
-            const cancelledDateMatch = line.match(TaskFormatRegularExpressions.cancelledDateRegex);
-            if (cancelledDateMatch !== null) {
-                cancelledDate = window.moment(cancelledDateMatch[1], dateFormat);
-                line = line.replace(TaskFormatRegularExpressions.cancelledDateRegex, '').trim();
-                matched = true;
-            }
-
-            const dueDateMatch = line.match(TaskFormatRegularExpressions.dueDateRegex);
-            if (dueDateMatch !== null) {
-                dueDate = window.moment(dueDateMatch[1], dateFormat);
-                line = line.replace(TaskFormatRegularExpressions.dueDateRegex, '').trim();
-                matched = true;
-            }
-
-            const scheduledDateMatch = line.match(TaskFormatRegularExpressions.scheduledDateRegex);
-            if (scheduledDateMatch !== null) {
-                scheduledDate = window.moment(scheduledDateMatch[1], dateFormat);
-                line = line.replace(TaskFormatRegularExpressions.scheduledDateRegex, '').trim();
-                matched = true;
-            }
-
-            const startDateMatch = line.match(TaskFormatRegularExpressions.startDateRegex);
-            if (startDateMatch !== null) {
-                startDate = window.moment(startDateMatch[1], dateFormat);
-                line = line.replace(TaskFormatRegularExpressions.startDateRegex, '').trim();
-                matched = true;
-            }
-
-            const createdDateMatch = line.match(TaskFormatRegularExpressions.createdDateRegex);
-            if (createdDateMatch !== null) {
-                createdDate = window.moment(createdDateMatch[1], dateFormat);
-                line = line.replace(TaskFormatRegularExpressions.createdDateRegex, '').trim();
-                matched = true;
-            }
-
-            const recurrenceMatch = line.match(TaskFormatRegularExpressions.recurrenceRegex);
-            if (recurrenceMatch !== null) {
-                recurrenceRule = recurrenceMatch[1].trim();
-                line = line.replace(TaskFormatRegularExpressions.recurrenceRegex, '').trim();
-                matched = true;
-            }
-
-            const onCompletionMatch = line.match(TaskFormatRegularExpressions.onCompletionRegex);
-            if (onCompletionMatch != null) {
-                line = line.replace(TaskFormatRegularExpressions.onCompletionRegex, '').trim();
-                const inputOnCompletionValue = onCompletionMatch[1];
-                onCompletion = parseOnCompletionValue(inputOnCompletionValue);
-                matched = true;
-            }
-
-            const tagsMatch = line.match(TaskRegularExpressions.hashTagsFromEnd);
-            if (tagsMatch != null) {
-                line = line.replace(TaskRegularExpressions.hashTagsFromEnd, '').trim();
-                matched = true;
-                const tagName = tagsMatch[0].trim();
-                trailingTags = trailingTags.length > 0 ? [tagName, trailingTags].join(' ') : tagName;
-            }
-
-            const idMatch = line.match(TaskFormatRegularExpressions.idRegex);
-            if (idMatch != null) {
-                line = line.replace(TaskFormatRegularExpressions.idRegex, '').trim();
-                id = idMatch[1].trim();
-                matched = true;
-            }
-
-            const dependsOnMatch = line.match(TaskFormatRegularExpressions.dependsOnRegex);
-            if (dependsOnMatch != null) {
-                line = line.replace(TaskFormatRegularExpressions.dependsOnRegex, '').trim();
-                dependsOn = dependsOnMatch[1]
-                    .replace(/ /g, '')
-                    .split(',')
-                    .filter((item) => item !== '');
-                matched = true;
-            }
-
-            runs++;
-        } while (matched && runs <= maxRuns);
-
-        if (recurrenceRule.length > 0) {
-            recurrence = Recurrence.fromText({
-                recurrenceRuleText: recurrenceRule,
-                occurrence: new Occurrence({ startDate, scheduledDate, dueDate }),
-            });
-        }
-        if (trailingTags.length > 0) line += ' ' + trailingTags;
-
-        return {
-            description: line,
-            priority,
-            startDate,
-            createdDate,
-            scheduledDate,
-            dueDate,
-            doneDate,
-            cancelledDate,
-            recurrence,
-            onCompletion,
-            id,
-            dependsOn,
-            tags: Task.extractHashtags(line),
-        };
     }
 }

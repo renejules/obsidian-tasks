@@ -342,8 +342,7 @@ export class SettingsTab extends PluginSettingTab {
             .setDesc(
                 SettingsTab.createFragmentWithHTML(
                     '<p>Configure the text format for task components.</p>' +
-                        '<p>Use <code>%date%</code> as a placeholder for the date.</p>' +
-                        '<p>Use <code>%value%</code> as a placeholder for other values.</p>' +
+                        '<p>Use <code>%value%</code> as a placeholder for the date or value.</p>' +
                         '<p><b>Note:</b> Changing these strings will not affect existing entries and status text of such existing entries will not be recognized by the plugin (need to be migrated manually).</p>',
                 ),
             );
