@@ -8,9 +8,11 @@ import { DATAVIEW_SYMBOLS } from '../TaskSerializer/DataviewTaskSerializer';
 import { StatusConfiguration } from '../Statuses/StatusConfiguration';
 import { Status } from '../Statuses/Status';
 import { DefaultTaskSerializer, type TaskSerializer } from '../TaskSerializer';
+import type { Task } from '../Task/Task';
 import type { SuggestionBuilder } from '../Suggestor';
 import type { LogOptions } from '../lib/logging';
 import { DataviewTaskSerializer } from '../TaskSerializer/DataviewTaskSerializer';
+import { CustomTaskSerializer } from '../TaskSerializer/CustomTaskSerializer';
 import { i18n } from '../i18n/i18n';
 import { type PresetsMap, defaultPresets } from '../Query/Presets/Presets';
 import { DebugSettings } from './DebugSettings';
@@ -57,9 +59,55 @@ export const TASK_FORMATS = {
             ],
         ),
     },
+    custom: {
+        getDisplayName: () => 'Custom',
+        taskSerializer: new CustomTaskSerializer(),
+        buildSuggestions: (
+            line: string,
+            cursorPos: number,
+            settings: Settings,
+            allTasks: Task[],
+            canSaveEdits: boolean,
+            taskToSuggestFor?: Task,
+        ) => {
+            // Re-create the suggestion builder on each call to ensure it uses the latest settings/symbols
+            const serializer = new CustomTaskSerializer();
+            // TODO: Figure out if we need brackets restriction like dataview
+            // For now, assuming standard behavior (no bracket restriction unless user configures patterns with brackets, which they do by default)
+            // But makeDefaultSuggestionBuilder doesn't inherently check brackets, it's just about what triggers it.
+            return makeDefaultSuggestionBuilder(serializer.symbols, DEFAULT_MAX_GENERIC_SUGGESTIONS, false)(
+                line,
+                cursorPos,
+                settings,
+                allTasks,
+                canSaveEdits,
+                taskToSuggestFor,
+            );
+        },
+    },
 } as const;
 
 export type TASK_FORMATS = typeof TASK_FORMATS; // For convenience to make some typing easier
+
+export interface CustomFormatSettings {
+    dateFormat: string;
+    createdDatePattern: string;
+    doneDatePattern: string;
+    cancelledDatePattern: string;
+    scheduledDatePattern: string;
+    dueDatePattern: string;
+    startDatePattern: string;
+    recurrencePattern: string;
+    priorityHighest: string;
+    priorityHigh: string;
+    priorityMedium: string;
+    priorityLow: string;
+    priorityLowest: string;
+    priorityNone: string;
+    onCompletionPattern: string;
+    dependsOnPattern: string;
+    idPattern: string;
+}
 
 export interface Settings {
     presets: PresetsMap;
@@ -79,6 +127,8 @@ export interface Settings {
     filenameAsDateFolders: string[];
     recurrenceOnNextLine: boolean;
     removeScheduledDateOnRecurrence: boolean;
+
+    customFormatSettings: CustomFormatSettings;
 
     // The custom status states.
     statusSettings: StatusSettings;
@@ -115,6 +165,25 @@ const defaultSettings: Readonly<Settings> = {
     filenameAsDateFolders: [],
     recurrenceOnNextLine: false,
     removeScheduledDateOnRecurrence: false,
+    customFormatSettings: {
+        dateFormat: 'DD.MM.YY',
+        createdDatePattern: '(Created %date%)',
+        doneDatePattern: '(Done %date%)',
+        cancelledDatePattern: '(Cancelled %date%)',
+        scheduledDatePattern: '(Plan %date%)',
+        dueDatePattern: '(Due %date%)',
+        startDatePattern: '(Start %date%)',
+        recurrencePattern: '(Repeat %value%)',
+        priorityHighest: '(Prio Highest)',
+        priorityHigh: '(Prio High)',
+        priorityMedium: '(Prio Medium)',
+        priorityLow: '(Prio Low)',
+        priorityLowest: '(Prio Lowest)',
+        priorityNone: '',
+        onCompletionPattern: '(OnCompletion %value%)',
+        dependsOnPattern: '(DependsOn %value%)',
+        idPattern: '(ID %value%)',
+    },
     statusSettings: new StatusSettings(),
     features: Feature.settingsFlags,
     generalSettings: {
@@ -172,6 +241,7 @@ export const getSettings = (): Settings => {
     addNewOptionsToUserSettings(Feature.settingsFlags, settings.features);
     addNewOptionsToUserSettings(defaultSettings.loggingOptions.minLevels, settings.loggingOptions.minLevels);
     addNewOptionsToUserSettings(defaultSettings.debugSettings, settings.debugSettings);
+    addNewOptionsToUserSettings(defaultSettings.customFormatSettings, settings.customFormatSettings);
 
     // In case saves pre-dated StatusConfiguration.type
     // TODO Special case for symbol 'X' or 'x' (just in case)
