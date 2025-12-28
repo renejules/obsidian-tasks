@@ -74,7 +74,7 @@ export class CustomTaskSerializer extends DefaultTaskSerializer {
     }
 
     private createPatternRegex(pattern: string, valueRegex: string): RegExp {
-        const parts = pattern.split(/%date%|%value%/);
+        const parts = pattern.split('%value%');
         const escapedParts = parts.map((part) => this.escapeRegExp(part));
         // Construct regex: part1 + value + part2, allowing flexibility for spaces if needed, but strict based on user input
         // Using strict user input for now as requested.
@@ -95,12 +95,12 @@ export class CustomTaskSerializer extends DefaultTaskSerializer {
                 Lowest: settings.priorityLowest,
                 None: settings.priorityNone,
             },
-            startDateSymbol: settings.startDatePattern.replace('%date%', ''), // Approximate for visual consistency in some contexts
-            createdDateSymbol: settings.createdDatePattern.replace('%date%', ''),
-            scheduledDateSymbol: settings.scheduledDatePattern.replace('%date%', ''),
-            dueDateSymbol: settings.dueDatePattern.replace('%date%', ''),
-            doneDateSymbol: settings.doneDatePattern.replace('%date%', ''),
-            cancelledDateSymbol: settings.cancelledDatePattern.replace('%date%', ''),
+            startDateSymbol: settings.startDatePattern.replace('%value%', ''), // Approximate for visual consistency in some contexts
+            createdDateSymbol: settings.createdDatePattern.replace('%value%', ''),
+            scheduledDateSymbol: settings.scheduledDatePattern.replace('%value%', ''),
+            dueDateSymbol: settings.dueDatePattern.replace('%value%', ''),
+            doneDateSymbol: settings.doneDatePattern.replace('%value%', ''),
+            cancelledDateSymbol: settings.cancelledDatePattern.replace('%value%', ''),
             recurrenceSymbol: settings.recurrencePattern.replace('%value%', ''),
             onCompletionSymbol: settings.onCompletionPattern.replace('%value%', ''),
             dependsOnSymbol: settings.dependsOnPattern.replace('%value%', ''),
