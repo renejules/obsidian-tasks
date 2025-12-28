@@ -1,13 +1,8 @@
-import type { Moment } from 'moment';
 import { TaskLayoutComponent } from '../Layout/TaskLayoutOptions';
-import { OnCompletion, parseOnCompletionValue } from '../Task/OnCompletion';
-import { Occurrence } from '../Task/Occurrence';
-import { Recurrence } from '../Task/Recurrence';
-import { Task } from '../Task/Task';
+import { OnCompletion } from '../Task/OnCompletion';
+import type { Task } from '../Task/Task';
 import { Priority } from '../Task/Priority';
-import { TaskRegularExpressions } from '../Task/TaskRegularExpressions';
 import { DefaultTaskSerializer, taskIdRegex, taskIdSequenceRegex } from './DefaultTaskSerializer';
-import type { TaskDetails } from '.';
 import { getSettings } from '../Config/Settings';
 
 export class CustomTaskSerializer extends DefaultTaskSerializer {
